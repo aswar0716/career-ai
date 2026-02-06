@@ -1,65 +1,175 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+
+type ApplicationStatus =
+  | "APPLIED"
+  | "SCREENING"
+  | "INTERVIEW"
+  | "OFFER"
+  | "REJECTED"
+  | "WITHDRAWN";
+
+type JobApplication = {
+  id: string;
+  company: string;
+  role: string;
+  location: string | null;
+  url: string | null;
+  status: ApplicationStatus;
+  appliedAt: string;
+  notes: string | null;
+};
+
+const STATUSES: ApplicationStatus[] = [
+  "APPLIED",
+  "SCREENING",
+  "INTERVIEW",
+  "OFFER",
+  "REJECTED",
+  "WITHDRAWN",
+];
 
 export default function Home() {
+  const [apps, setApps] = useState<JobApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [company, setCompany] = useState("");
+  const [role, setRole] = useState("");
+  const [status, setStatus] = useState<ApplicationStatus>("APPLIED");
+  const [location, setLocation] = useState("");
+
+  async function loadApps() {
+    setLoading(true);
+    const res = await fetch("/api/applications");
+    const data = (await res.json()) as JobApplication[];
+    setApps(data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadApps();
+  }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const res = await fetch("/api/applications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        company,
+        role,
+        status,
+        location: location.trim() ? location : null,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error ?? "Failed");
+      return;
+    }
+
+    setCompany("");
+    setRole("");
+    setStatus("APPLIED");
+    setLocation("");
+    await loadApps();
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700 }}>Career AI Dashboard</h1>
+      <p style={{ marginTop: 6, opacity: 0.8 }}>
+        Track job applications. This is the MVP.
+      </p>
+
+      <section style={{ marginTop: 24, padding: 16, border: "1px solid #333", borderRadius: 12 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600 }}>Add application</h2>
+
+        <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 12 }}>
+          <input
+            placeholder="Company (required)"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            style={{ padding: 10, borderRadius: 10, border: "1px solid #333" }}
+          />
+          <input
+            placeholder="Role (required)"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            style={{ padding: 10, borderRadius: 10, border: "1px solid #333" }}
+          />
+          <input
+            placeholder="Location (optional)"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            style={{ padding: 10, borderRadius: 10, border: "1px solid #333" }}
+          />
+
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
+            style={{ padding: 10, borderRadius: 10, border: "1px solid #333" }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="submit"
+            style={{
+              padding: 12,
+              borderRadius: 12,
+              border: "1px solid #333",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Save
+          </button>
+        </form>
+      </section>
+
+      <section style={{ marginTop: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600 }}>Applications</h2>
+
+        {loading ? (
+          <p style={{ marginTop: 12 }}>Loading...</p>
+        ) : apps.length === 0 ? (
+          <p style={{ marginTop: 12 }}>No applications yet. Add one above.</p>
+        ) : (
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            {apps.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  padding: 14,
+                  borderRadius: 12,
+                  border: "1px solid #333",
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontWeight: 700 }}>
+                    {a.company} — {a.role}
+                  </div>
+                  <div style={{ opacity: 0.8 }}>{a.status}</div>
+                </div>
+                <div style={{ opacity: 0.8 }}>
+                  {a.location ? a.location : "Location: n/a"} • Applied{" "}
+                  {new Date(a.appliedAt).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }
