@@ -27,6 +27,7 @@ model JobApplication {
   notes     String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
+  @@unique([company, role], name: "company_role")
 
   @@index([status])
   @@index([appliedAt])
